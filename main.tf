@@ -1,5 +1,8 @@
 # Copyright (c) HashiCorp, Inc.
 # SPDX-License-Identifier: MPL-2.0
+locals {
+  name_suffix = "${var.resource_tags["project"]}-${var.resource_tags["environment"]}"
+}
 
 provider "aws" {
   region = var.aws_region
@@ -11,9 +14,11 @@ data "aws_availability_zones" "available" {
 
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "2.64.0"
+  version = "5.8.1"
 
-  name = "vpc-${var.resource_tags["project"]}-${var.resource_tags["environment"]}"
+  #name = "vpc-${var.resource_tags["project"]}-${var.resource_tags["environment"]}"
+  # simply by local values
+  name = "vpc-${local.name_suffix}"
   cidr = var.vpc_cidr_block
 
   azs             = data.aws_availability_zones.available.names
@@ -28,9 +33,11 @@ module "vpc" {
 
 module "app_security_group" {
   source  = "terraform-aws-modules/security-group/aws//modules/web"
-  version = "3.17.0"
+  version = "5.1.2"
 
-  name        = "web-sg-${var.resource_tags["project"]}-${var.resource_tags["environment"]}"
+  #name        = "web-sg-${var.resource_tags["project"]}-${var.resource_tags["environment"]}"
+  # simply by local values
+  name = "web-sg-${local.name_suffix}"
   description = "Security group for web-servers with HTTP ports open within VPC"
   vpc_id      = module.vpc.vpc_id
 
@@ -41,9 +48,11 @@ module "app_security_group" {
 
 module "lb_security_group" {
   source  = "terraform-aws-modules/security-group/aws//modules/web"
-  version = "3.17.0"
+  version = "5.1.2"
 
-  name        = "lb-sg-${var.resource_tags["project"]}-${var.resource_tags["environment"]}"
+  #name        = "lb-sg-${var.resource_tags["project"]}-${var.resource_tags["environment"]}"
+  # simply by local values
+  name = "lb-sg-${local.name_suffix}"
   description = "Security group for load balancer with HTTP ports open within VPC"
   vpc_id      = module.vpc.vpc_id
 
@@ -59,14 +68,17 @@ resource "random_string" "lb_id" {
 
 module "elb_http" {
   source  = "terraform-aws-modules/elb/aws"
-  version = "2.4.0"
+  version = "4.0.1"
 
   # Ensure load balancer name is unique
-  name = "lb-${random_string.lb_id.result}-${var.resource_tags["project"]}-${var.resource_tags["environment"]}"
+  #name = "lb-${random_string.lb_id.result}-${var.resource_tags["project"]}-${var.resource_tags["environment"]}"
+  # simply by local values
+  name = "lb-${random_string.lb_id.result}-${local.name_suffix}"
 
   internal = false
 
-  security_groups = [module.lb_security_group.this_security_group_id]
+  #security_groups = [module.lb_security_group.this_security_group_id]
+  security_groups = [module.lb_security_group.security_group_id]
   subnets         = module.vpc.public_subnets
 
   number_of_instances = length(aws_instance.app)
@@ -107,7 +119,8 @@ resource "aws_instance" "app" {
   instance_type = var.ec2_instance_type
 
   subnet_id              = module.vpc.private_subnets[count.index % length(module.vpc.private_subnets)]
-  vpc_security_group_ids = [module.app_security_group.this_security_group_id]
+  #vpc_security_group_ids = [module.app_security_group.this_security_group_id]      Unsupported
+  vpc_security_group_ids = [module.app_security_group.security_group_id]
 
   user_data = <<-EOF
     #!/bin/bash
