@@ -19,7 +19,8 @@ This repo is a companion repo to the [Learn Terraform locals](https://developer.
       * Solution: Update aws.versions
     * Problem2: module "elb_http" $ ""aws_instance" "app"" security_groups = [module.lb_security_group.this_security_group_id]
       * Solution: Switch to existing property
-    * 
+* `terraform destroy`
+  * clean up the infrastructure
 
 # Notes
 * Order of the resources definition in Terraform configuration does NOT affect
